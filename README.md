@@ -1,10 +1,10 @@
-# 📞 AI Meeting Notes Automation
+# AI Meeting Notes Automation
 
 This project automates the extraction, summarization, and documentation of Microsoft Teams client advisory calls. Built using Azure services, Microsoft Graph API, and OpenAI, the solution captures Outlook meeting metadata, retrieves Teams transcripts, summarizes them using GPT-4, stores data in Azure SQL, and updates CRM (ClickUp) — all on a scheduled basis.
 
----
 
-## ⚙️ Tech Stack
+
+## Tech Stack
 
 - **Microsoft Graph API** – Fetches Outlook calendar and Teams transcript data.
 - **Azure Function App** – Automates daily script execution.
@@ -13,9 +13,9 @@ This project automates the extraction, summarization, and documentation of Micro
 - **ClickUp API** – Updates CRM with summarized notes.
 - **Python** – Primary programming language for all logic.
 
----
 
-## 📂 Project Structure
+
+## Project Structure
 
 ```plaintext
 .
@@ -64,9 +64,9 @@ This project automates the extraction, summarization, and documentation of Micro
 ### `utils.py`
 - Logging utilities for tracking process flow and errors
 
----
 
-## 🚀 Workflow Overview
+
+## Workflow Overview
 
 1. **Trigger**  
    Azure Function App triggers `function_app.py` on a schedule (e.g. daily at 7 PM SGT).
@@ -90,9 +90,9 @@ This project automates the extraction, summarization, and documentation of Micro
 7. **Update CRM (ClickUp)**  
    The summary is pushed to the relevant ClickUp task using the ClickUp API.
 
----
 
-## 🧠 Key Features
+
+## Key Features
 
 - **Transcript Matching**  
   Uses encoded vs. raw meeting ID comparison for precise transcript mapping.
@@ -106,15 +106,14 @@ This project automates the extraction, summarization, and documentation of Micro
 - **CRM Integration**  
   (Optional) Each meeting can be linked to a ClickUp task for automated note updates.
 
----
 
-## ⚙️ Deployment
+## Deployment
 
 All Python files are deployed inside an **Azure Function App**, which runs automatically on a timer trigger. Environment variables (e.g., client credentials, SQL settings) are stored securely in the Azure Function configuration settings.
 
----
 
-## 🛠️ Environment Variables (for local testing)
+
+## Environment Variables (for local testing)
 
 Create an `.env` file or set these as App Settings in your Azure Function App:
 
@@ -136,16 +135,16 @@ OPENAI_API_KEY=
 OPENAI_URL= 
 ```
 
----
 
-## 📦 Requirements
+
+## Requirements
 
 ```bash
 pip install -r requirements.txt
 ```
 
 > Make sure to include `pyodbc`, `requests` and `pytz`
----
+
 
 ## 🔍 Sample SQL Table Structure (`tblOutlookEventsY`)
 
@@ -178,9 +177,8 @@ CREATE TABLE tblOutlookEventsY (
 );
 ```
 
----
 
-## 🧪 Testing Locally
+## Testing Locally
 
 You can test the main script by running:
 
@@ -190,9 +188,9 @@ python function_app.py
 
 Ensure your environment variables are loaded or defined before running.
 
----
 
-## 📈 Potential Extensions
+
+## Potential Extensions
 
 **Scalable Diagnostic Intelligence**  - As it is designed with scalability in mind, we can generate diagnostics based on previous meeting summaries. The system can be enhanced to automatically assess whether a client advisory session requires further action or indicates resolution/no action needed.
 **Sentiment & Intent Analysis**  - Layer in sentiment analysis and intent classification using Azure Cognitive Services to flag urgent or sensitive client conversations.
@@ -201,14 +199,14 @@ Ensure your environment variables are loaded or defined before running.
 **Smart Filtering & Alerts**  - Auto-prioritize meetings for follow-up based on keyword triggers or customer profile metadata.
 **UI Dashboard (Ongoing Enhancement)** - Create a frontend dashboard for manual review, editing, and audit trail of summaries and automation status.
 
----
 
-## 📄 License
+
+## License
 
 This project is internal-use. Please customize depending on your organization’s policies.
 
----
 
-## 👨‍💻 Author
+
+## Author
 
 Built by Deodie Picson as part of a productivity and efficiency automation initiative. For inquiries or support, please contact deodie.dev@gmail.com.
