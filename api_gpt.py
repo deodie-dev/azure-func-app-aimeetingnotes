@@ -1,7 +1,7 @@
 import requests
 import json
 from utils import log_and_print_err, log_and_print
-# from config import OPENAI_API_KEY, OPENAI_URL
+
 import os
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 OPENAI_URL = os.environ["OPENAI_URL"]

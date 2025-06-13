@@ -1,5 +1,4 @@
 import pyodbc
-# from config import SQL_SERVER, SQL_PASSWORD, SQL_DATABASE, SQL_DRIVER, SQL_USERNAME
 from utils import log_and_print, log_and_print_err
 
 import os
