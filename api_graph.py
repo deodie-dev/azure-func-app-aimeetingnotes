@@ -2,7 +2,6 @@ import re
 import requests
 from data_process import compare_meeting_ids, parse_event
 from utils import log_and_print, log_and_print_err
-# from config import GRAPH_APP_URL, GRAPH_APP_CLIENT_ID, GRAPH_APP_CLIENT_SECRET
 
 import os
 GRAPH_APP_URL = os.environ["GRAPH_APP_URL"]
@@ -35,21 +34,6 @@ def get_outlook_metadata(access_token, user, start_date, end_date):
 
     calendar_events = []
     events = []
-
-    # url = f"https://graph.microsoft.com/v1.0/users/{user}/events?$filter=start/dateTime ge '{start_date}' and end/dateTime le '{end_date}'"
-    # headers = {
-    #     "Authorization": f"Bearer {access_token}",
-    #     "Prefer": 'outlook.timezone="Asia/Singapore"',
-    #     "Content-Type": "application/json"
-    # }
-    # response = requests.get(url, headers=headers)
-    # if response.status_code == 200:
-    #     data = response.json()
-    #     events = data.get("value", [])
-    #     for event in events:
-    #         calendar_events.append(parse_event(event))
-    # else:
-    #     log_and_print_err(f"Couldn't get Outlook events metadata - {response.status_code}: {response.text}")
 
     url = f"https://graph.microsoft.com/v1.0/users/{user}/calendarview?$top=1000&$count=true&startDateTime={start_date}&endDateTime={end_date}"
     headers = {
