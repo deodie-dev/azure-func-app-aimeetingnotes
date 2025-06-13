@@ -194,10 +194,12 @@ Ensure your environment variables are loaded or defined before running.
 
 ## 📈 Potential Extensions
 
-- Email summary notifications to attendees.
-- Auto-detect client names and topics from transcript.
-- Multi-user or multi-team support.
-- Transcription language detection and translation.
+**Scalable Diagnostic Intelligence**  - As it is designed with scalability in mind, we can generate diagnostics based on previous meeting summaries. The system can be enhanced to automatically assess whether a client advisory session requires further action or indicates resolution/no action needed.
+**Sentiment & Intent Analysis**  - Layer in sentiment analysis and intent classification using Azure Cognitive Services to flag urgent or sensitive client conversations.
+**CRM Integration Flexibility**  - Expand support for additional CRMs beyond ClickUp via modular API adapters.
+**Smart Filtering & Alerts**  - Auto-prioritize meetings for follow-up based on keyword triggers or customer profile metadata.
+**Smart Filtering & Alerts**  - Auto-prioritize meetings for follow-up based on keyword triggers or customer profile metadata.
+**UI Dashboard (Ongoing Enhancement)** - Create a frontend dashboard for manual review, editing, and audit trail of summaries and automation status.
 
 ---
 
