@@ -1,7 +1,8 @@
 from datetime import datetime
 from utils import log_and_print, log_and_print_err
 import requests
-# from config import CLICKUP_USERS_LIST_ID, CLICKUP_API_TOKEN
+from config import *
+
 import os
 CLICKUP_API_TOKEN = os.environ["CLICKUP_API_TOKEN"]
 CLICKUP_USERS_LIST_ID = os.environ["CLICKUP_USERS_LIST_ID"]
@@ -28,16 +29,14 @@ def get_users():
 def create_clickup_task (subject, user, is_organizer, is_cancelled, formatted_st, duration_str, categories_str, attendees_str, transcript_found, ai_api_done, summarized_transcript, clickup_api_done):
     
     log_and_print("Running create_clickup_task function...")
-    LIST_ID = '901607923627'
-    url = f'https://api.clickup.com/api/v2/list/{LIST_ID}/task'
+    
+    url = f'https://api.clickup.com/api/v2/list/{CALENDAR_EVENTS_LIST_ID}/task'
 
     headers = {
         'Authorization': CLICKUP_API_TOKEN,
         'Content-Type': 'application/json'
     }
     
-    # dt = datetime.strptime(formatted_st, "%Y-%m-%d %H:%M:%S.%f")
-    # formatted_time = dt.strftime("%#I:%M %p").lower()
     payload = {
         'name': f"{subject}",
         'description': 'This task was created via the ClickUp API using Python.',
@@ -58,7 +57,6 @@ def create_clickup_task (subject, user, is_organizer, is_cancelled, formatted_st
             {
                 'id': '6c0f53b0-c6c9-4146-aee8-becedb4a269d', # Start Time
                 'value': f"{formatted_st}"  
-                # 'value': f"{formatted_time}"  
             },
             {
                 'id': 'f3a17d4b-0a86-415d-947c-a10d226c7317', # Duration
@@ -213,10 +211,8 @@ def find_task_by_email(target_email, folder):
     return None
 
 
-# 90160216966 or 90160216968
-def find_folder_by_task_name (task_name,list_id):
 
-    # log_and_print(f"Searching folder in Client Delivery: {list_id}")
+def find_folder_by_task_name (task_name,list_id):
 
     url = f"https://api.clickup.com/api/v2/folder/{list_id}/list"
     headers = {
@@ -268,25 +264,18 @@ def add_task_to_temp_list(ba_name, task_name, task_description):
 
     log_and_print(f"Adding AI Meeting Notes task to AI Meeting Notes temporary folder.")
 
-    ba_list = [
-        {"name": "Andre Pech", "id": "901608412938"},
-        {"name": "Brad Eisenhuth", "id": "901608412955"},
-        {"name": "Chris Wightwick", "id": "901608412958"},
-        {"name": "Simone Dunlop", "id": "901608412963"}
-    ]
-
     ba_id = None
-    for ba in ba_list:
+    for ba in BA_LIST:
         if ba["name"].lower() == ba_name.lower():
             ba_id = ba["id"]
             break  
     
     if ba_id is None:
-        ba_id = '901608414834' #Others folder
+        ba_id = OTHERS_LIST_ID #Others folder
 
     task_url = f"https://api.clickup.com/api/v2/list/{ba_id}/task"
     headers = {
-        "Authorization": "REMOVED_SECRET"
+        "Authorization": CLICKUP_API_TOKEN
     }
 
     task_data = {

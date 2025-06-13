@@ -9,6 +9,7 @@ from api_gpt import *
 from api_clickup import *
 from utils import *
 from sql_azure_db import *
+from config import *
 
 app = func.FunctionApp()
 
@@ -154,13 +155,13 @@ def main():
             # if company name is found, add task to temp folder
             if task_name:
                 # find clients folder then create a new task for the summarization
-                client_folder_diagnostic_id = find_folder_by_task_name (task_name,'90160216966')
+                log_and_print(f"Searching Diagnostic folder in Client Delivery...")
+                client_folder_diagnostic_id = find_folder_by_task_name (task_name, DIAGNOSTIC_ID)
                 if client_folder_diagnostic_id:
-                    log_and_print(f"Searching Diagnostic folder in Client Delivery...")
                     add_task_to_list(client_folder_diagnostic_id, ai_task_name, task_description) # SUCCESS
                 else:
-                    log_and_print(f"Searching Diagnostic folder in Client Delivery...")
-                    client_folder_retainer_id = find_folder_by_task_name (task_name,'90160216968')
+                    log_and_print(f"Searching Retainer folder in Client Delivery...")
+                    client_folder_retainer_id = find_folder_by_task_name (task_name, RETAINER_ID)
                     if client_folder_retainer_id:
                         add_task_to_list(client_folder_retainer_id, ai_task_name, task_description) # SUCCESS
 

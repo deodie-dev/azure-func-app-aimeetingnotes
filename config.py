@@ -28,3 +28,25 @@
 # OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # OPENAI_URL = os.getenv("OPENAI_URL")
 
+# BA_Name_1 = 'Andre Pech'
+# BA_ID_1 = '901608412938'
+# BA_Name_2 = 'Brad Eisenhuth'
+# BA_ID_2 = '901608412955'
+# BA_Name_3 = 'Chris Wightwick'
+# BA_ID_3 = '901608412958'
+# BA_Name_4 = 'Simone Dunlop'
+# BA_ID_4 = '901608412963'
+
+# ClickUp Essentials
+DIAGNOSTIC_ID = '90160216966'
+RETAINER_ID = '90160216968'
+CALENDAR_EVENTS_LIST_ID = '901607923627'
+OTHERS_LIST_ID = '901608414834'
+
+BA_LIST = [
+    {"name": "Andre Pech", "id": "901608412938"},
+    {"name": "Brad Eisenhuth", "id": "901608412955"},
+    {"name": "Chris Wightwick", "id": "901608412958"},
+    {"name": "Simone Dunlop", "id": "901608412963"}
+]
+
