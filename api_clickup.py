@@ -187,25 +187,31 @@ def find_task_by_email(target_email, folder):
                     return task['name']
             
             
-    # try again using pagination and maxed limit
-    url = f"https://api.clickup.com/api/v2/view/8cewk4m-13996/task?status={folder}&page=1&limit=999"
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        log_and_print_err(f"Failed to retrieve tasks. Status Code: {response.status_code}")
-        return None
+    # try again using pagination maxed limit
+    page = 0
+    while page != 11:
+        print(page)
+        url = f"https://api.clickup.com/api/v2/view/8cewk4m-13996/task?status={folder}&page={page}&limit=100"
 
-    tasks = response.json().get('tasks', [])
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            log_and_print_err(f"Failed to retrieve tasks. Status Code: {response.status_code}")
+            return None
 
-    for task in tasks:
-        for custom_field in task.get('custom_fields', []):
-            if custom_field.get('name') == "Email" and custom_field.get('value') == target_email:
-                log_and_print(f"Task found: {task['name']}")
-                return task['name']
-            email_value = custom_field.get('value')
-            if custom_field.get('name') == "Email - Associates" and email_value:
-                if email_value.find(target_email) != -1:
+        tasks = response.json().get('tasks', [])
+
+        for task in tasks:
+            for custom_field in task.get('custom_fields', []):
+                if custom_field.get('name') == "Email" and custom_field.get('value') == target_email:
                     log_and_print(f"Task found: {task['name']}")
                     return task['name']
+                email_value = custom_field.get('value')
+                if custom_field.get('name') == "Email - Associates" and email_value:
+                    if email_value.find(target_email) != -1:
+                        log_and_print(f"Task found: {task['name']}")
+                        return task['name']
+
+        page +=1 
     
     log_and_print("Not Found")
     return None
