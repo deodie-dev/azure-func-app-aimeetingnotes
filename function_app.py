@@ -149,7 +149,11 @@ def main():
                     task_name = task_name_retainer
                     break
 
-            ai_task_name = f"AI Notes: {event.get('subject')}"
+            date_str = event.get('start_time')
+            dt = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f0")
+            formatted_date = f"{dt.month}/{dt.day}"
+
+            ai_task_name = f"AI Notes {formatted_date}: {event.get('subject')}"
             task_description = summarized_transcript
 
             # if company name is found, add task to temp folder
