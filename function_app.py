@@ -28,7 +28,7 @@ def main():
 
     one_day_ago = utc_now - timedelta(days=1)
     start_date = one_day_ago.strftime('%Y-%m-%dT00:00:00Z')
-    end_date_utc = utc_now + timedelta(days=2)
+    end_date_utc = utc_now + timedelta(days=1)
     end_date = end_date_utc.strftime('%Y-%m-%dT23:59:59Z')
 
     conn, cursor = sql_connection()
@@ -149,7 +149,11 @@ def main():
                     task_name = task_name_retainer
                     break
 
-            ai_task_name = f"AI Notes: {event.get('subject')}"
+            date_str = event.get('start_time')
+            dt = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f0")
+            formatted_date = f"{dt.month}/{dt.day}"
+
+            ai_task_name = f"AI Notes {formatted_date}: {event.get('subject')}"
             task_description = summarized_transcript
 
             # if company name is found, add task to temp folder
@@ -159,16 +163,19 @@ def main():
                 client_folder_diagnostic_id = find_folder_by_task_name (task_name, DIAGNOSTIC_ID)
                 if client_folder_diagnostic_id:
                     add_task_to_list(client_folder_diagnostic_id, ai_task_name, task_description) # SUCCESS
+                    update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'Yes')
                 else:
                     log_and_print(f"Searching Retainer folder in Client Delivery...")
                     client_folder_retainer_id = find_folder_by_task_name (task_name, RETAINER_ID)
                     if client_folder_retainer_id:
                         add_task_to_list(client_folder_retainer_id, ai_task_name, task_description) # SUCCESS
+                        update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'Yes')
 
                     # if client folder cannot be found in either Retainer or Diagnostic, add to user's temp folder
                     else: 
                         log_and_print("Task Found: Add to temp")
                         add_task_to_temp_list(business_advisor_name, ai_task_name, task_description)
+                        update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'No')
 
             else:
                 log_and_print("Task NOT Found: Add to temp")
@@ -176,7 +183,7 @@ def main():
 
 
             # AI summarization is complete
-            update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'Yes')
+            # update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'Yes')
             sql_update_record(cursor, conn, summarized_transcript, event.get("event_id"), 1)
 
                     
