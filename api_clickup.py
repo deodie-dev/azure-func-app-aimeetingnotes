@@ -20,9 +20,10 @@ def request_clickup(action,url,headers,json=False):
     while True:
         limit = response.headers.get("X-RateLimit-Limit")
         remaining = response.headers.get("X-RateLimit-Remaining")
+        int_remaining = int(remaining)
         log_and_print(f"ClickUp Rate Limit: {remaining}/{limit} remaining")
         
-        if response.status_code == 429 or remaining < 20:
+        if response.status_code == 429 or int_remaining < 20:
             time.sleep(30)
             continue
 
