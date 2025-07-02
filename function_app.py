@@ -3,6 +3,7 @@ import azure.functions as func
 import logging
 from datetime import datetime, timedelta
 import pytz
+import time
 
 from api_graph import *
 from api_gpt import *
@@ -180,12 +181,10 @@ def main():
             else:
                 log_and_print("Task NOT Found: Add to temp")
                 add_task_to_temp_list(business_advisor_name, ai_task_name, task_description)
-
+                update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'No')
 
             # AI summarization is complete
-            # update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'Yes')
             sql_update_record(cursor, conn, summarized_transcript, event.get("event_id"), 1)
-
                     
     cursor.close()
     conn.close()
