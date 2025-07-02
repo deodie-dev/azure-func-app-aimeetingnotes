@@ -1,11 +1,32 @@
 from datetime import datetime
 from utils import log_and_print, log_and_print_err
-import requests
+import requests, time
 from config import *
 
 import os
 CLICKUP_API_TOKEN = os.environ["CLICKUP_API_TOKEN"]
 CLICKUP_USERS_LIST_ID = os.environ["CLICKUP_USERS_LIST_ID"]
+
+
+def request_clickup(action,url,headers,json=False):
+
+    if action == 'Get':
+        response = requests.get(url, headers=headers)
+    elif action == 'Post':
+        response = requests.post(url, headers=headers, json=json)
+    elif action == 'Put':
+        response = requests.put(url, headers=headers, json=json)
+
+    while True:
+        limit = response.headers.get("X-RateLimit-Limit")
+        remaining = response.headers.get("X-RateLimit-Remaining")
+        log_and_print(f"ClickUp Rate Limit: {remaining}/{limit} remaining")
+        
+        if response.status_code == 429 or remaining < 20:
+            time.sleep(30)
+            continue
+
+        return response
 
 # ===============================================================================================================================
 def get_users():
@@ -16,7 +37,8 @@ def get_users():
         'Content-Type': 'application/json'
     }
 
-    response = requests.get(url, headers=headers)
+    # response = requests.get(url, headers=headers)
+    response = request_clickup('Get', url, headers)
     if response.status_code == 200:
         tasks = response.json().get('tasks', [])
         userID = [task['name'] for task in tasks]
@@ -31,7 +53,6 @@ def create_clickup_task (subject, user, is_organizer, is_cancelled, formatted_st
     log_and_print("Running create_clickup_task function...")
     
     url = f'https://api.clickup.com/api/v2/list/{CALENDAR_EVENTS_LIST_ID}/task'
-
     headers = {
         'Authorization': CLICKUP_API_TOKEN,
         'Content-Type': 'application/json'
@@ -89,8 +110,8 @@ def create_clickup_task (subject, user, is_organizer, is_cancelled, formatted_st
         ]
     }
 
-    response = requests.post(url, headers=headers, json=payload)
-
+    # response = requests.post(url, headers=headers, json=payload)
+    response = request_clickup('Post', url, headers, payload)
     if response.status_code == 200:
         log_and_print("Task created successfully!")
         task = response.json()
@@ -106,8 +127,6 @@ def create_clickup_task (subject, user, is_organizer, is_cancelled, formatted_st
 def update_clickup_task(clickup_task_id, transcript_found, ai_api_done, summarized_transcript, clickup_api_done):
 
     task_id = clickup_task_id
-
-    # print(f"Updating Task: {clickup_task_id}")
 
     custom_fields_to_update = {
         '1c046a74-78e0-4e67-ad98-19166dc1944a': f"{transcript_found}", # Transcript Found?
@@ -125,8 +144,8 @@ def update_clickup_task(clickup_task_id, transcript_found, ai_api_done, summariz
         url = f'https://api.clickup.com/api/v2/task/{task_id}/field/{field_id}'
         payload = {"value": value}
 
-        response = requests.post(url, json=payload, headers=headers)
-        
+        # response = requests.post(url, json=payload, headers=headers)
+        response = request_clickup('Post', url, headers, payload)
         if response.status_code == 200:
             log_and_print(f"Custom field {field_id} updated to '{value}'")
         else:
@@ -146,8 +165,8 @@ def update_clickup_task(clickup_task_id, transcript_found, ai_api_done, summariz
         "status": new_status
     }
     url = f'https://api.clickup.com/api/v2/task/{task_id}'
-    response = requests.put(url, json=payload, headers=headers)
-
+    # response = requests.put(url, json=payload, headers=headers)
+    response = request_clickup('Put', url, headers, payload)
     if response.status_code == 200:
         log_and_print("Task has been updated!")
     else:
@@ -161,14 +180,15 @@ def find_task_by_email(target_email, folder):
 
     log_and_print(f"Searching task in Caseload Overview - {folder}: {target_email}")
 
-
     url = f"https://api.clickup.com/api/v2/view/8cewk4m-13996/task?status={folder}"
     headers = {
         'Authorization': CLICKUP_API_TOKEN,
         'Content-Type': 'application/json'
     }
 
-    response = requests.get(url, headers=headers)
+    # response = requests.get(url, headers=headers)
+    response = request_clickup('Get', url, headers)
+
     if response.status_code != 200:
         log_and_print_err(f"Failed to retrieve tasks. Status Code: {response.status_code}")
         return None
@@ -193,7 +213,8 @@ def find_task_by_email(target_email, folder):
         print(page)
         url = f"https://api.clickup.com/api/v2/view/8cewk4m-13996/task?status={folder}&page={page}&limit=100"
 
-        response = requests.get(url, headers=headers)
+        # response = requests.get(url, headers=headers)
+        response = request_clickup('Get', url, headers)
         if response.status_code != 200:
             log_and_print_err(f"Failed to retrieve tasks. Status Code: {response.status_code}")
             return None
@@ -225,8 +246,8 @@ def find_folder_by_task_name (task_name,list_id):
         'Authorization': CLICKUP_API_TOKEN,
         'Content-Type': 'application/json'
     }
-    response = requests.get(url, headers=headers)
-
+    # response = requests.get(url, headers=headers)
+    response = request_clickup('Get', url, headers)
     if response.status_code != 200:
         log_and_print_err(f"Failed to retrieve lists. Status Code: {response.status_code}")
         return None
@@ -256,8 +277,8 @@ def add_task_to_list(list_id, task_name, task_description):
         "description": task_description
     }
 
-    response = requests.post(task_url, json=task_data, headers=headers)
-
+    # response = requests.post(task_url, json=task_data, headers=headers)
+    response = request_clickup('Post', task_url, headers, task_data)
     if response.status_code == 200:
         log_and_print(f"Task '{task_name}' successfully created in list ID {list_id}.")
     else:
@@ -289,8 +310,8 @@ def add_task_to_temp_list(ba_name, task_name, task_description):
         "description": task_description
     }
 
-    response = requests.post(task_url, json=task_data, headers=headers)
-
+    # response = requests.post(task_url, json=task_data, headers=headers)
+    response = request_clickup('Post', task_url, headers, task_data)
     if response.status_code == 200:
         log_and_print(f"Task '{task_name}' successfully created in list ID {ba_id}.")
     else:
