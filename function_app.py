@@ -15,7 +15,8 @@ from config import *
 app = func.FunctionApp()
 # "0 */15 22-23 * * 0-4"
 # "15-59/15,0,15,30,45 21-23,0-7 * * 0-4"
-@app.timer_trigger(schedule="0 */15 22-23 * * 0-4", arg_name="myTimer", run_on_startup=True, use_monitor=False) 
+# 0 */15 22-23,0-7 * * 1-5  
+@app.timer_trigger(schedule="0 */15 22-23,0-7 * * 1-5", arg_name="myTimer", run_on_startup=True, use_monitor=False) 
 def timer_trigger(myTimer: func.TimerRequest) -> None:
     if myTimer.past_due:
         logging.info('The timer is past due!')
