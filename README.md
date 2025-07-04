@@ -1,6 +1,6 @@
 # AI Meeting Notes Automation
 
-This project automates the extraction, summarization, and documentation of Microsoft Teams client advisory calls. Built using Azure services, Microsoft Graph API, and OpenAI, the solution captures Outlook meeting metadata, retrieves Teams transcripts, summarizes them using GPT-4, stores data in Azure SQL, and updates CRM (ClickUp) — all on a scheduled basis.
+This project automates the extraction, summarization, and documentation of Microsoft Teams client advisory calls. Built using Azure services, Microsoft Graph API, and OpenAI, the solution captures Outlook meeting metadata, retrieves Teams transcripts, summarizes them using GPT-4, stores data in Azure SQL, and updates CRM (ClickUp) all on a scheduled basis.
 
 
 
