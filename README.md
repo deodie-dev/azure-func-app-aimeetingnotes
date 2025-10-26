@@ -16,6 +16,12 @@ This project automates the extraction, summarization, and documentation of Micro
 ## Architecture
 ![Architecture](https://github.com/deodie-dev/azure-func-app-aimeetingnotes/blob/main/images/Architecture.png)
 
+## List view of MS Teams Meetings in ClickUp
+![ClickUp](https://github.com/deodie-dev/azure-func-app-aimeetingnotes/blob/main/images/ClickUp.png)
+
+## AI Output in its respective ClickUp task 
+![Output](https://github.com/deodie-dev/azure-func-app-aimeetingnotes/blob/main/images/Output.png)
+
 ## Project Structure
 
 ```plaintext
