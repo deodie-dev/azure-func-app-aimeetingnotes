@@ -134,7 +134,5 @@ __queuestorage__
 __azurite_db*__.json
 .python_packages
 
-# Hide Config
-# config.py
-folder_ids.json
-folder_IDs.py
+# Hide Clickup IDs
+clickup_ids.py
