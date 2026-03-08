@@ -13,14 +13,19 @@ class AzureSQLClient:
         self.server = Config.SQL_SERVER
         self.username = Config.SQL_USERNAME
 
-        self.connection, self.cursor = self.connect()
+        # self.connection, self.cursor = self.connect()
 
     def connect(self):
-        connection_string = f"DRIVER={{{self.driver}}};SERVER={self.server};DATABASE={self.database};UID={self.username};PWD={self.password}"
+        logger.info(
+            "Attempting SQL connection server=%s database=%s",
+            self.server,
+            self.database
+        )
+
+        connection_string = f'DRIVER={self.driver};SERVER={self.server};DATABASE={self.database};UID={self.username};PWD={self.password};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30'
         try:
             connection = pyodbc.connect(connection_string)
-            cursor = connection.cursor()
-            return connection, cursor
+            return connection
         
         except Exception as e:
             logger.error(f"Error connecting to Azure SQL Database: {e}")
