@@ -26,92 +26,143 @@ This project automates the extraction, summarization, and documentation of Micro
 
 ```plaintext
 .
-├── function_app.py          # Main script triggered by Azure Function
-├── api_graph.py             # Microsoft Graph API interaction logic
-├── api_clickup.py           # ClickUp API integration (create/update tasks)
-├── api_gpt.py               # Azure OpenAI (GPT-4) integration for summarization
-├── data_process.py          # Meeting ID comparison and event data parsing
-├── sql_azure_db.py          # Azure SQL DB interaction (insert/update records)
-├── utils.py                 # Logging utilities
-├── requirements.txt         # Python dependencies
-└── README.md                # Project documentation
+├── function_app.py                  # Main Azure Function entry point
+├── host.json                        # Azure Function configuration
+├── local.settings.json              # Local environment settings
+├── requirements.txt                 # Python dependencies
+├── src/
+│   ├── clients/
+│   │   ├── graph_client.py          # Microsoft Graph API client
+│   │   ├── clickup_client.py        # ClickUp API client
+│   │   └── openai_client.py         # Azure OpenAI (GPT-4) client
+│   ├── core/
+│   │   ├── config.py                # Configuration management
+│   │   ├── logger.py                # Logger setup utility
+│   │   ├── clickup_ids.py           # ClickUp folder/user IDs
+│   │   └── folder_ids.json          # JSON data for folder mappings
+│   ├── database/
+│   │   └── azure_sql.py             # Azure SQL Database client
+│   ├── models/
+│   │   └── event.py                 # Event data model
+│   ├── services/
+│   │   └── meeting_service.py       # Core business logic orchestrator
+│   └── utils/
+│       └── meeting_utils.py         # Utility functions (parsing, cleaning)
+├── README.md                        # Project documentation
+└── images/                          # Architecture diagrams
 ```
 
 ### `function_app.py`
-- Main Azure Function trigger
-- Orchestrates the full pipeline from data fetch → summarization → ClickUp update
+- Main Azure Function entry point
+- Configures timer trigger (every 15 minutes during business hours)
+- Delegates to `MeetingService` for orchestration
 
-### `api_graph.py`
-- Handles Microsoft Graph authentication and API calls:
-  - Get calendar events
+### `src/services/meeting_service.py`
+- Orchestrates the complete pipeline:
+  - Fetches Outlook calendar events
+  - Retrieves Teams transcripts
+  - Summarizes using GPT-4
+  - Updates Azure SQL and ClickUp
+
+### `src/clients/graph_client.py`
+- Microsoft Graph API authentication and calls:
+  - Fetch Outlook calendar events
   - Retrieve Teams meeting transcripts
-  - Clean and extract VTT text
-  - Look up user ID by email
+  - Parse and clean VTT transcript format
 
-### `api_clickup.py`
-- Handles communication with ClickUp API:
-  - Create or update ClickUp tasks
-  - Attach summaries and metadata
-  - Automate task status updates
+### `src/clients/clickup_client.py`
+- ClickUp API integration:
+  - Create or update tasks
+  - Attach meeting summaries and metadata
 
-### `api_gpt.py`
-- Connects to Azure OpenAI (GPT-4) for:
-  - Summarizing raw transcript text
-  - Ensuring concise and accurate summaries for documentation
+### `src/clients/openai_client.py`
+- Azure OpenAI (GPT-4) integration:
+  - Summarize meeting transcripts
+  - Return structured summaries
 
-### `data_process.py`
-- Extracts meeting IDs and compares them
-- Formats event metadata
-- Computes durations and attendee lists
+### `src/database/azure_sql.py`
+- Azure SQL Server client:
+  - Insert/update meeting records in `tblOutlookEventsY`
+  - Query existing meetings
 
-### `sql_azure_db.py`
-- Connects to Azure SQL Server
-- Inserts and updates records in the `tblOutlookEventsY` table
+### `src/core/config.py`
+- Configuration management for API keys and database settings
 
-### `utils.py`
-- Logging utilities for tracking process flow and errors
+### `src/core/logger.py`
+- Centralized logging setup for tracking workflow and errors
+
+### `src/models/event.py`
+- Data model for meeting/event objects
+
+### `src/utils/meeting_utils.py`
+- Helper utilities for data parsing, formatting, and text cleaning
 
 
 
 ## Workflow Overview
 
 1. **Trigger**  
-   Azure Function App triggers `function_app.py` on a schedule (e.g. daily at 7 PM SGT).
+   Azure Function App timer trigger invokes `function_app.py` on a schedule (every 15 minutes during business hours: 10 PM - 8 AM SGT, weekdays only).
 
-2. **Fetch Calendar Events**  
-   `api_graph.get_outlook_metadata()` pulls relevant meetings from Outlook Calendar within the defined date range.
+2. **Service Orchestration**  
+   `MeetingService.main()` initializes all clients (GraphClient, ClickUpClient, OpenAIClient, AzureSQLClient) and orchestrates the pipeline.
 
-3. **Process Event Metadata**  
-   `data_process.parse_event()` extracts and cleans relevant data fields.
+3. **Fetch Calendar Events**  
+   `GraphClient.get_outlook_metadata()` retrieves Outlook meeting metadata for the past 24 hours to upcoming 24 hours.
 
-4. **Get Meeting Transcript**  
-   `api_graph.get_transcript_content_url()` fetches the transcript URL for Teams calls.
-   Then, `api_graph.get_filtered_vtt()` cleans the transcript (from VTT format).
+4. **Process Event Metadata**  
+   `MeetingUtils` functions parse and format event data, extracting relevant fields and computing meeting duration.
 
-5. **Summarize Using OpenAI GPT-4**  
-   Transcript text is sent to Azure OpenAI, which returns a structured summary.
+5. **Get Meeting Transcript**  
+   `GraphClient.get_transcript_content_url()` fetches the Teams transcript URL.
+   `GraphClient.get_filtered_vtt()` retrieves and cleans the transcript (converts VTT to plain text).
 
-6. **Update Azure SQL Database**  
-   `sql_azure_db.sql_insert_new_record()` or `sql_update_record()` inserts or updates meeting info and summaries.
+6. **Summarize Using OpenAI GPT-4**  
+   `OpenAIClient.summarize_transcript()` sends cleaned transcript to Azure OpenAI and returns a structured summary.
 
-7. **Update CRM (ClickUp)**  
-   The summary is pushed to the relevant ClickUp task using the ClickUp API.
+7. **Update Azure SQL Database**  
+   `AzureSQLClient.insert_record()` or `update_record()` stores meeting metadata and summaries in `tblOutlookEventsY`.
+
+8. **Update CRM (ClickUp)**  
+   `ClickUpClient.update_task()` pushes the summary to the relevant ClickUp task for CRM integration.
 
 
 
 ## Key Features
 
+- **Modular Architecture**  
+  Organized into distinct layers: clients (external APIs), services (business logic), database (data persistence), utils (helpers), and models (data structures).
+
+- **Scalable Design**  
+  Each client (Graph, ClickUp, OpenAI, SQL) is independently instantiable and testable.
+
+- **Centralized Logger**  
+  All operations logged through `core/logger.py` for consistent debugging and monitoring.
+
+- **Resilient Error Handling**  
+  Try-catch blocks and logging at each pipeline stage ensure graceful failure and troubleshooting.
+
 - **Transcript Matching**  
-  Uses encoded vs. raw meeting ID comparison for precise transcript mapping.
+  Precise meeting ID correlation between Outlook and Teams for accurate transcript retrieval.
 
-- **Resilient Logging**  
-  All critical steps are logged using Python's logging module via `utils.py`.
-
-- **Extensible Database**  
-  SQL table `tblOutlookEventsY` tracks each meeting’s metadata, processing status, and summary content.
+- **Extensible Configuration**  
+  Environment variables managed in `core/config.py` for easy deployment across environments.
 
 - **CRM Integration**  
-  (Optional) Each meeting can be linked to a ClickUp task for automated note updates.
+  Automated task creation and updates in ClickUp for seamless workflow automation.
+
+
+
+## Recent Refactoring & Architecture Improvements
+
+The codebase has been refactored for improved maintainability, testability, and scalability:
+
+- **Modular Client Layer**: API interactions (Microsoft Graph, ClickUp, OpenAI, SQL) now live in separate, independently testable client classes.
+- **Service-Oriented Architecture**: Business logic centralized in `MeetingService`, making the main trigger function clean and lightweight.
+- **Configuration Management**: Centralized in `src/core/config.py` for consistent settings across modules.
+- **Better Code Organization**: Separated concerns into `clients/`, `services/`, `database/`, `models/`, and `utils/` directories.
+- **Enhanced Logging**: Unified logging setup in `src/core/logger.py` replaces scattered logging utilities.
+- **Data Models**: Introduced `Event` model in `src/models/` for type safety and clarity.
 
 
 ## Deployment
