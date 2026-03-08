@@ -1,5 +1,9 @@
 import logging
 import azure.functions as func
+from src.services.meeting_service import MeetingService
+from src.core.logger import setup_logger
+
+setup_logger()
 
 app = func.FunctionApp()
 
@@ -13,9 +17,6 @@ def timer_trigger(myTimer: func.TimerRequest) -> None:
     if myTimer.past_due:
         logging.info('The timer is past due!')
 
-    from src.services.meeting_service import MeetingService
-    from src.core.logger import setup_logger
-    setup_logger()
     service = MeetingService()
     service.main()
 
