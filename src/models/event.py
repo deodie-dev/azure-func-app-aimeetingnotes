@@ -4,7 +4,7 @@ from typing import List, Optional
 
 @dataclass
 class EventDetails:
-    event_id: Optional[str]
+    event_id: str
     subject: str
     organizer: str
 
