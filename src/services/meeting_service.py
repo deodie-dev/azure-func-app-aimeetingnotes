@@ -8,11 +8,11 @@ from src.clients.openai_client import OpenAIClient
 from src.database.azure_sql import AzureSQLClient
 from src.core.config import Config
 
-
 logger = logging.getLogger(__name__)
 
 class MeetingService:
 
+    # Initialize the MeetingService with instances of GraphClient, ClickUpClient, OpenAIClient, and AzureSQLClient to handle interactions with Microsoft Graph API, ClickUp API, Azure OpenAI, and Azure SQL Database respectively.
     def __init__(self):
 
         self.graph = GraphClient()
@@ -24,75 +24,82 @@ class MeetingService:
     def main(self):
 
         utc_now = datetime.now(pytz.utc)
-        logger.info (f"Script started at: {utc_now}")
-
         one_day_ago = utc_now - timedelta(days=1)
         start_date = one_day_ago.strftime('%Y-%m-%dT00:00:00Z')
         end_date_utc = utc_now + timedelta(days=1)
         end_date = end_date_utc.strftime('%Y-%m-%dT23:59:59Z')
+        logger.info (f"Script started at: {utc_now}")
 
-        conn = self.azuredb.connect()
-        cursor = conn.cursor() if conn else None
-        if not conn or not cursor:
+        if not self.azuredb.connection or not self.azuredb.cursor:
             logger.error("Unable to connect to Azure SQL Database. Exiting the script.")
             return
         
         logger.info(f"Processing meetings from {start_date} to {end_date}...")
 
+        # users_list = self.clickup.get_users()
+        users_list = ['tech@theoutperformer.co']
+        logger.info(f"Retrieved list of users: {users_list}")
 
-        cursor.close()
-        conn.close()
+        for user in users_list:
 
-        # access_token = get_global_graphAPI_token ()
-        # users_list = get_users()
+            logger.info (f"\n\n\n[ ===============================     Processing meetings for {user}     =============================== ]\n")
 
-        # for user in users_list:
+            business_advisor_name = self.graph.get_user_id_by_email(user, "displayName")
+            calendar_events = self.graph.get_outlook_metadata(user, start_date, end_date)
 
-        #     log_and_print (f"\n\n\n[ ===============================     Processing meetings for {user}     =============================== ]\n")
-        #     business_advisor_name = get_user_id_by_email(user, access_token, "displayName")
-        #     calendar_events = get_outlook_metadata(access_token, user, start_date, end_date)
+            for event in calendar_events:
 
-        #     for event in calendar_events:
+                logger.info("-------------------------------------------------------------------------------------------------- \n")
+                get_transcript = 0
 
-        #         log_and_print("-------------------------------------------------------------------------------------------------- \n")
-        #         get_transcript = 0
+                # exclude all meetings that don't fall under the category of [client - retainer] and [client - diagnostic]
+                if not ('client - retainer' in event.categories_str.lower() or 'client - diagnostic' in event.categories_str.lower()):
+                    logger.info (f"NOT INCLUDED | Subject: {event.subject} | Start Date/Time: {event.start_time} | Category: xxxxx \n")
+                    continue
+                else:
+                    logger.info (f"Subject: {event.subject} | Category: {event.categories_str}")
+                    logger.info (f"Start Date/Time: {event.start_time} ")
 
-        #         # exclude all meetings that don't fall under the category of [client - retainer] and [client - diagnostic]
-        #         if not ('client - retainer' in event.get("categories_str").lower() or 'client - diagnostic' in event.get("categories_str").lower()):
-        #             log_and_print (f"NOT INCLUDED | Subject: {event.get('subject')} | Start Date/Time: {event.get('start_time')} | Category: xxxxx \n")
-        #             continue
-        #         else:
-        #             log_and_print (f"Subject: {event.get('subject')} | Category: {event.get('categories_str')}")
-        #             log_and_print (f"Start Date/Time: {event.get('start_time')} ")
+                # retrieve record from sql database based on event ID
+                check_sql = """ SELECT get_transcript_done, summarize_transcript_done, clickup_task_id FROM tblOutlookEventsY WHERE event_id = ? """
+                self.azuredb.cursor.execute(check_sql, (event.event_id,))
+                result = self.azuredb.cursor.fetchone()
 
-        #         # retrieve record from sql database based on event ID
-        #         check_sql = """ SELECT get_transcript_done, summarize_transcript_done, clickup_task_id FROM tblOutlookEventsY WHERE event_id = ? """
-        #         cursor.execute(check_sql, (event.get("event_id"),))
-        #         result = cursor.fetchone()
+                logger.info(f"Database check result for event {event.event_id}: {result}")
 
-        #         endtime_str = event.get("end_time")[:26]
-        #         endtime = datetime.fromisoformat(endtime_str).replace(tzinfo=pytz.UTC)
-        #         now = utc_now + timedelta(hours=8) 
+                endtime_str = event.end_time[:26]
+                endtime = datetime.fromisoformat(endtime_str).replace(tzinfo=pytz.UTC)
+                now = utc_now + timedelta(hours=8) 
 
-        #         if endtime < now: get_transcript = 1
+                if endtime < now: get_transcript = 1
 
-        #         # add new clickup task in Calendar Events v.001
-        #         if not result:
+                # add new clickup task in Calendar Events v.001
+                if not result:
 
-        #             clickup_task_id = create_clickup_task (event.get("subject"), business_advisor_name, event.get("is_cancelled"), event.get("is_cancelled"), event.get("formatted_st"), event.get("duration_str"), event.get("categories_str"), event.get("attendees_str"), 0, 0, 'Pending', 0)
-        #             if create_clickup_task:
-        #                 sql_insert_new_record(cursor, conn, event, get_transcript, clickup_task_id)
-        #             else:
-        #                 log_and_print_err(f"Unable to create ClickUp task and add new record in SQL database.")
+                    clickup_task_id = self.clickup.create_clickup_task (event.subject, business_advisor_name, event.is_cancelled, event.is_cancelled, event.formatted_start, event.duration_str, event.categories_str, event.attendees_str, 0, 0, 'Pending', 0)
+                    if clickup_task_id:
+                        logger.info(f"Created ClickUp task with ID: {clickup_task_id} for event: {event.event_id}")
+                        self.azuredb.sql_insert_new_record(event, get_transcript, clickup_task_id)
+                    else:
+                        logger.error(f"Unable to create ClickUp task and add new record in SQL database.")
+                    continue
 
-        #             continue
+                # process existing events stored in database
+                get_transcript_done, summarize_transcript_done, clickup_task_id = result # SQL query results
+                logger.info(f"Existing record found in database for event: {event.event_id} | get_transcript_done: {get_transcript_done} | summarize_transcript_done: {summarize_transcript_done} | clickup_task_id: {clickup_task_id}")    
 
-        #         # process existing events stored in database
-        #         get_transcript_done, summarize_transcript_done, clickup_task_id = result # SQL query results
+                # skip processed events
+                if get_transcript_done != False and summarize_transcript_done != False:
+                    continue
 
-        #         # skip processed events
-        #         if get_transcript_done != False and summarize_transcript_done != False:
-        #             continue
+
+        self.azuredb.cursor.close()
+        self.azuredb.connection.close()
+
+
+
+
+
 
         #         # update event metadata in database
         #         sql_update_outlook_metadata(cursor, conn, event, get_transcript)
