@@ -12,9 +12,11 @@ class AzureSQLClient:
         self.password = Config.SQL_PASSWORD
         self.server = Config.SQL_SERVER
         self.username = Config.SQL_USERNAME
+        self.connection = self.connect()
+        self.cursor = self.connection.cursor() if self.connection else None
 
-        # self.connection, self.cursor = self.connect()
 
+    # Establishes a connection to the Azure SQL Database using the provided configuration
     def connect(self):
         logger.info(
             "Attempting SQL connection server=%s database=%s",
@@ -30,7 +32,8 @@ class AzureSQLClient:
         except Exception as e:
             logger.error(f"Error connecting to Azure SQL Database: {e}")
             return None
-        
+
+    # This function inserts a new record into the tblOutlookEventsY table with the provided event details, transcript status, and ClickUp task ID
     def sql_insert_new_record (self, event, get_transcript, clickup_task_id):
 
         insert_sql = """
@@ -40,18 +43,19 @@ class AzureSQLClient:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) """
         
         try:
-            self.cursor.execute(insert_sql, (event.get("event_id"), event.get("joinURL"), event.get("is_cancelled"), event.get("is_cancelled"), event.get("event_type"), event.get("is_online_meeting"), event.get("online_meeting_provider"), 
-                                        event.get("response_status"), event.get("subject"), event.get("organizer"), event.get("formatted_st"), event.get("formatted_et"), event.get("location"), 
-                                        event.get("categories_str"), event.get("duration_str"), event.get("attendees_str"), 'False', False, get_transcript, False, False, clickup_task_id, False))
+            self.cursor.execute(insert_sql, (event.event_id, event.join_url, event.is_cancelled, event.is_organizer, event.event_type, event.is_online_meeting, event.online_meeting_provider, 
+                                        event.response_status, event.subject, event.organizer, event.formatted_start, event.formatted_end, event.location, 
+                                        event.categories_str, event.duration_str, event.attendees_str, 'False', False, get_transcript, False, False, clickup_task_id, False))
             self.connection.commit()
-            logger.info(f"Added event {event.get('event_id')} into the database.")
+            logger.info(f"Added event {event.event_id} into the database.")
             return True
         
         except Exception as sql_execution_error:
-            logger.error(f"Error while adding event {event.get('event_id')} in the database: {sql_execution_error}")
+            logger.error(f"Error while adding event {event.event_id} in the database: {sql_execution_error}")
             return False
 
 
+    # This function updates an existing record in the tblOutlookEventsY table with the latest event details, transcript status, and ClickUp task ID based on the event_id
     def sql_update_outlook_metadata(self, event, get_transcript):
         update_sql = """
             UPDATE tblOutlookEventsY
@@ -60,18 +64,19 @@ class AzureSQLClient:
                 categories = ?, duration = ?, attendees = ?, get_transcript = ?
             WHERE event_id = ? """
         try:
-            self.cursor.execute(update_sql, (event.get("is_cancelled"), event.get("is_cancelled"), event.get("event_type"), event.get("is_online_meeting"), event.get("online_meeting_provider"), 
-                                        event.get("response_status"), event.get("subject"), event.get("organizer"), event.get("formatted_st"), event.get("formatted_et"), event.get("location"), 
-                                        event.get("categories_str"), event.get("duration_str"), event.get("attendees_str"), get_transcript, event.get("event_id")))
+            self.cursor.execute(update_sql, (event.is_cancelled, event.is_organizer, event.event_type, event.is_online_meeting, event.online_meeting_provider, 
+                                        event.response_status, event.subject, event.organizer, event.formatted_start, event.formatted_end, event.location, 
+                                        event.categories_str, event.duration_str, event.attendees_str, get_transcript, event.event_id))
             self.connection.commit()
-            logger.info(f"Updated event {event.get('event_id')} in the database.")
+            logger.info(f"Updated event {event.event_id} in the database.")
             return True
 
         except Exception as sql_execution_error:
-            logger.error(f"Error while updating event {event.get('event_id')} in the database: {sql_execution_error}")
+            logger.error(f"Error while updating event {event.event_id} in the database: {sql_execution_error}")
             return False
 
 
+    # This function updates the summarized transcript and the status of transcript retrieval and summarization in the tblOutlookEventsY table based on the event_id
     def sql_update_record (self, summarized_transcript, event_id, transcript_done):
         try:
             update_sql = """
