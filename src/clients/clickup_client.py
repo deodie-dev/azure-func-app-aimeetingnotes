@@ -11,6 +11,7 @@ class ClickUpClient:
     def __init__(self):
         self.api_token = Config.CLICKUP_API_TOKEN
         self.users_list_id = Config.CLICKUP_USERS_LIST_ID
+        self.calendar_events_list_id = Config.CALENDAR_EVENTS_LIST_ID
         self.base_url = "https://api.clickup.com/api/v2"
 
         self.BusinessAdviser = Config.CUSTOM_FIELD_ID_BusinessAdviser
@@ -30,7 +31,7 @@ class ClickUpClient:
 
 
     # This function handles all ClickUp API requests and implements rate limit handling
-    def request_clickup(action,url,headers,json=False):
+    def request_clickup(self, action, url, headers, json=False):
 
         if action == 'Get':
             response = requests.get(url, headers=headers)
@@ -38,6 +39,8 @@ class ClickUpClient:
             response = requests.post(url, headers=headers, json=json)
         elif action == 'Put':
             response = requests.put(url, headers=headers, json=json)
+        else:
+            raise ValueError(f"Unsupported action: {action}")
 
         while True:
             limit = response.headers.get("X-RateLimit-Limit")
