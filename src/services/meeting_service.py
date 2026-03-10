@@ -110,99 +110,91 @@ class MeetingService:
                     logger.error(f"Unable to get Microsoft id for {user}")
                     continue
 
+                yesterday = utc_now - timedelta(days=1)
+                start_date_Tminus1 = yesterday.replace(hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%dT00:00:00Z')
+                transcript_found_and_ready = False
+
+                # get transcript URL by decoding teams meeting id and match it with outlook's join URL
+                transcript_URL = self.graph.get_transcript_content_url(user_microsoft_id,event.join_url,start_date_Tminus1,end_date)
+                if transcript_URL:
+                    logger.info("Retrieving vtt...")
+                    filtered_vtt = self.graph.get_filtered_vtt(transcript_URL)
+                    
+                # get transcript contents (vtt)
+                if filtered_vtt:
+                    summarized_transcript = self.openai.summarize_func(filtered_vtt)
+                    transcript_found_and_ready = True
+
+                # transcript not found
+                if not transcript_found_and_ready and not summarized_transcript:
+                    self.clickup.update_clickup_task(clickup_task_id, 'No', 'No', 'Transcript Not Found', 'No')
+                    self.azuredb.sql_update_record(summarized_transcript, event.event_id, 0)
+                    continue
+
+                # update both Clickup and SQL database if VVT is found and transcript is summarized
+
+                # client email as clickup reference ID
+                client_email = event.attendees_str
+                email_list = []
+
+                if isinstance(client_email, str):
+                    email_list = [email.strip() for email in client_email.split(",")]
+
+                    if user in email_list: # exclude organizer
+                        email_list.remove(user) 
+
+                task_name = None
+
+                # find company name as task in case overload by email address
+                for email in email_list:
+                    task_name_diagnostic = self.clickup.find_task_by_email(email, 'DIAGNOSTIC')
+                    if task_name_diagnostic:
+                        task_name = task_name_diagnostic
+                        break
+                    task_name_retainer = self.clickup.find_task_by_email(email, 'RETAINER')
+                    if task_name_retainer:
+                        task_name = task_name_retainer
+                        break
+
+                date_str = event.start_time
+                dt = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f0")
+                formatted_date = f"{dt.month}/{dt.day}"
+
+                ai_task_name = f"AI Notes {formatted_date}: {event.subject}"
+                task_description = summarized_transcript
+
+                # if company name is found, add task to temp folder
+                if task_name:
+                    # find clients folder then create a new task for the summarization
+                    logger.info(f"Searching Diagnostic folder in Client Delivery...")
+                    client_folder_diagnostic_id = self.clickup.find_folder_by_task_name (task_name, Config.DIAGNOSTIC_ID)
+                    if client_folder_diagnostic_id:
+                        self.clickup.add_task_to_list(client_folder_diagnostic_id, ai_task_name, task_description) # SUCCESS
+                        self.clickup.update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'Yes')
+                    else:
+                        logger.info(f"Searching Retainer folder in Client Delivery...")
+                        client_folder_retainer_id = self.clickup.find_folder_by_task_name (task_name, Config.RETAINER_ID)
+                        if client_folder_retainer_id:
+                            self.clickup.add_task_to_list(client_folder_retainer_id, ai_task_name, task_description) # SUCCESS
+                            self.clickup.update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'Yes')
+
+                        # if client folder cannot be found in either Retainer or Diagnostic, add to user's temp folder
+                        else: 
+                            logger.info("Task Found: Add to temp")
+                            self.clickup.add_task_to_temp_list(business_advisor_name, ai_task_name, task_description)
+                            self.clickup.update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'No')
+
+                else:
+                    logger.info("Task NOT Found: Add to temp")
+                    self.clickup.add_task_to_temp_list(business_advisor_name, ai_task_name, task_description)
+                    self.clickup.update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'No')
+
+                # AI summarization is complete
+                self.azuredb.sql_update_record(summarized_transcript, event.event_id, 1)
+
         self.azuredb.cursor.close()
         self.azuredb.connection.close()
 
-
-
-
-
-
-
-        #         yesterday = utc_now - timedelta(days=1)
-        #         start_date_Tminus1 = yesterday.replace(hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%dT00:00:00Z')
-        #         transcript_found_and_ready = False
-
-        #         # get transcript URL by decoding teams meeting id and match it with outlook's join URL
-        #         transcript_URL = get_transcript_content_url(access_token,user_microsoft_id,event.get("joinURL"),start_date_Tminus1,end_date)
-        #         if transcript_URL:
-        #             log_and_print ("Retrieving vtt...")
-        #             filtered_vtt = get_filtered_vtt(access_token, transcript_URL)
-                    
-        #         # get transcript contents (vtt)
-        #         if filtered_vtt:
-        #             summarized_transcript = summarize_func(filtered_vtt)
-        #             transcript_found_and_ready = True
-
-        #         # transcript not found
-        #         if not transcript_found_and_ready and not summarized_transcript:
-        #             update_clickup_task(clickup_task_id, 'No', 'No', 'Transcript Not Found', 'No')
-        #             sql_update_record(cursor, conn, summarized_transcript, event.get("event_id"), 0)
-        #             continue
-
-        #         # update both Clickup and SQL database if VVT is found and transcript is summarized
-
-        #         # client email as clickup reference ID
-        #         client_email = event.get("attendees_str")
-        #         email_list = []
-
-        #         if isinstance(client_email, str):
-        #             email_list = [email.strip() for email in client_email.split(",")]
-
-        #             if user in email_list: # exclude organizer
-        #                 email_list.remove(user) 
-
-        #         task_name = None
-
-        #         # find company name as task in case overload by email address
-        #         for email in email_list:
-        #             task_name_diagnostic = find_task_by_email(email, 'DIAGNOSTIC')
-        #             if task_name_diagnostic:
-        #                 task_name = task_name_diagnostic
-        #                 break
-        #             task_name_retainer = find_task_by_email(email, 'RETAINER')
-        #             if task_name_retainer:
-        #                 task_name = task_name_retainer
-        #                 break
-
-        #         date_str = event.get('start_time')
-        #         dt = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f0")
-        #         formatted_date = f"{dt.month}/{dt.day}"
-
-        #         ai_task_name = f"AI Notes {formatted_date}: {event.get('subject')}"
-        #         task_description = summarized_transcript
-
-        #         # if company name is found, add task to temp folder
-        #         if task_name:
-        #             # find clients folder then create a new task for the summarization
-        #             log_and_print(f"Searching Diagnostic folder in Client Delivery...")
-        #             client_folder_diagnostic_id = find_folder_by_task_name (task_name, DIAGNOSTIC_ID)
-        #             if client_folder_diagnostic_id:
-        #                 add_task_to_list(client_folder_diagnostic_id, ai_task_name, task_description) # SUCCESS
-        #                 update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'Yes')
-        #             else:
-        #                 log_and_print(f"Searching Retainer folder in Client Delivery...")
-        #                 client_folder_retainer_id = find_folder_by_task_name (task_name, RETAINER_ID)
-        #                 if client_folder_retainer_id:
-        #                     add_task_to_list(client_folder_retainer_id, ai_task_name, task_description) # SUCCESS
-        #                     update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'Yes')
-
-        #                 # if client folder cannot be found in either Retainer or Diagnostic, add to user's temp folder
-        #                 else: 
-        #                     log_and_print("Task Found: Add to temp")
-        #                     add_task_to_temp_list(business_advisor_name, ai_task_name, task_description)
-        #                     update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'No')
-
-        #         else:
-        #             log_and_print("Task NOT Found: Add to temp")
-        #             add_task_to_temp_list(business_advisor_name, ai_task_name, task_description)
-        #             update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'No')
-
-        #         # AI summarization is complete
-        #         sql_update_record(cursor, conn, summarized_transcript, event.get("event_id"), 1)
-                        
-        # cursor.close()
-        # conn.close()
 
         
 
