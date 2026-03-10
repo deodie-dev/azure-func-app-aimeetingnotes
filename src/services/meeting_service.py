@@ -65,7 +65,7 @@ class MeetingService:
                 self.azuredb.cursor.execute(check_sql, (event.event_id,))
                 result = self.azuredb.cursor.fetchone()
 
-                logger.info(f"Database check result for event {event.event_id}: {result}")
+                # logger.info(f"Database check result for event {event.event_id}: {result}")
 
                 endtime_str = event.end_time[:26]
                 endtime = datetime.fromisoformat(endtime_str).replace(tzinfo=pytz.UTC)
@@ -75,13 +75,13 @@ class MeetingService:
 
                 # add new clickup task in Calendar Events v.001
                 if not result:
-
                     clickup_task_id = self.clickup.create_clickup_task (event.subject, business_advisor_name, event.is_cancelled, event.is_cancelled, event.formatted_start, event.duration_str, event.categories_str, event.attendees_str, 0, 0, 'Pending', 0)
                     if clickup_task_id:
                         logger.info(f"Created ClickUp task with ID: {clickup_task_id} for event: {event.event_id}")
                         self.azuredb.sql_insert_new_record(event, get_transcript, clickup_task_id)
                     else:
                         logger.error(f"Unable to create ClickUp task and add new record in SQL database.")
+                    
                     continue
 
                 # process existing events stored in database
@@ -92,6 +92,23 @@ class MeetingService:
                 if get_transcript_done != False and summarize_transcript_done != False:
                     continue
 
+                # update event metadata in database
+                self.azuredb.sql_update_outlook_metadata(event, get_transcript)
+
+                # skip events that have not yet finished
+                if not get_transcript == 1:
+                    continue
+
+                # try to retrieve transcript from MS Teams and send it to Azure OpenAI for summarization
+                logger.info("Getting Transcript...")
+                filtered_vtt = None
+                summarized_transcript = None
+                user_microsoft_id = self.graph.get_user_id_by_email(user, "id")
+                logger.info(f"Microsoft ID for {user}: {user_microsoft_id}")
+
+                if not user_microsoft_id: 
+                    logger.error(f"Unable to get Microsoft id for {user}")
+                    continue
 
         self.azuredb.cursor.close()
         self.azuredb.connection.close()
@@ -101,22 +118,6 @@ class MeetingService:
 
 
 
-        #         # update event metadata in database
-        #         sql_update_outlook_metadata(cursor, conn, event, get_transcript)
-
-        #         # skip events that have not yet finished
-        #         if not get_transcript == 1:
-        #             continue
-
-        #         # try to retrieve transcript from MS Teams and send it to Azure OpenAI for summarization
-        #         log_and_print ("Getting Transcript...")
-        #         filtered_vtt = None
-        #         summarized_transcript = None
-        #         user_microsoft_id = get_user_id_by_email(user, access_token, "id")
-
-        #         if not user_microsoft_id: 
-        #             log_and_print_err(f"Unable to get microsft id for {user}")
-        #             continue
 
         #         yesterday = utc_now - timedelta(days=1)
         #         start_date_Tminus1 = yesterday.replace(hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%dT00:00:00Z')
