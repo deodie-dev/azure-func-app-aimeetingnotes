@@ -26,7 +26,7 @@ class MeetingService:
         utc_now = datetime.now(pytz.utc)
         one_day_ago = utc_now - timedelta(days=1)
         start_date = one_day_ago.strftime('%Y-%m-%dT00:00:00Z')
-        end_date_utc = utc_now + timedelta(days=1)
+        end_date_utc = utc_now + timedelta(days=2)
         end_date = end_date_utc.strftime('%Y-%m-%dT23:59:59Z')
         logger.info (f"Script started at: {utc_now}")
 
@@ -36,29 +36,41 @@ class MeetingService:
         
         logger.info(f"Processing meetings from {start_date} to {end_date}...")
 
-        # users_list = self.clickup.get_users()
-        users_list = ['tech@theoutperformer.co']
-        logger.info(f"Retrieved list of users: {users_list}")
+        users_list = self.clickup.get_users()
+        # users_list = [{'name': 'tech@theoutperformer.co', 'ai_meeting_notes_folder_id': '123456789100', 'active': 'No'}]
+        # logger.info(f"Retrieved list of users: {users_list}")
 
-        for user in users_list:
+        for user_info in users_list:
 
-            logger.info (f"\n\n\n[ ===============================     Processing meetings for {user}     =============================== ]\n")
+            user = user_info['name'] # current user's email address
+            ai_folder_id = user_info['ai_meeting_notes_folder_id'] # current user's AI Meeting Notes folder ID
+            is_active = user_info['active'] # current user's active status
+            business_advisor_name = self.graph.get_user_id_by_email(user, "displayName") # current user's display name
 
-            business_advisor_name = self.graph.get_user_id_by_email(user, "displayName")
+            if is_active != 'Yes':
+                logger.info (f"\n\n\n[ ===============================     Skipping inactive user {business_advisor_name}     =============================== ]")
+                continue
+            logger.info (f"\n\n\n[ ===============================     Processing meetings for {business_advisor_name}     =============================== ]")
+            logger.info (f"user: {user}")
+            logger.info (f"ai_folder_id: {ai_folder_id}\n")
+
             calendar_events = self.graph.get_outlook_metadata(user, start_date, end_date)
 
             for event in calendar_events:
 
-                logger.info("-------------------------------------------------------------------------------------------------- \n")
                 get_transcript = 0
 
                 # exclude all meetings that don't fall under the category of [client - retainer] and [client - diagnostic]
                 if not ('client - retainer' in event.categories_str.lower() or 'client - diagnostic' in event.categories_str.lower()):
-                    logger.info (f"NOT INCLUDED | Subject: {event.subject} | Start Date/Time: {event.start_time} | Category: xxxxx \n")
+                    logger.info("-------------------------------------------------------------------------------")
+                    logger.info (f"NOT INCLUDED | Subject: {event.subject} | Start Date/Time: {event.start_time} | Category: xxxxx")
+                    logger.info("-------------------------------------------------------------------------------\n")
                     continue
                 else:
+                    logger.info("-------------------------------------------------------------------------------")
                     logger.info (f"Subject: {event.subject} | Category: {event.categories_str}")
                     logger.info (f"Start Date/Time: {event.start_time} ")
+                    logger.info("-------------------------------------------------------------------------------")
 
                 # retrieve record from sql database based on event ID
                 check_sql = """ SELECT get_transcript_done, summarize_transcript_done, clickup_task_id FROM tblOutlookEventsY WHERE event_id = ? """
@@ -181,16 +193,17 @@ class MeetingService:
                         # if client folder cannot be found in either Retainer or Diagnostic, add to user's temp folder
                         else: 
                             logger.info("Task Found: Add to temp")
-                            self.clickup.add_task_to_temp_list(business_advisor_name, ai_task_name, task_description)
+                            self.clickup.add_task_to_temp_list(business_advisor_name, ai_task_name, task_description, ai_folder_id)
                             self.clickup.update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'No')
 
                 else:
                     logger.info("Task NOT Found: Add to temp")
-                    self.clickup.add_task_to_temp_list(business_advisor_name, ai_task_name, task_description)
+                    self.clickup.add_task_to_temp_list(business_advisor_name, ai_task_name, task_description, ai_folder_id)
                     self.clickup.update_clickup_task(clickup_task_id, 'Yes', 'Yes', summarized_transcript, 'No')
 
                 # AI summarization is complete
                 self.azuredb.sql_update_record(summarized_transcript, event.event_id, 1)
+                logger.info("\n")
 
         self.azuredb.cursor.close()
         self.azuredb.connection.close()
