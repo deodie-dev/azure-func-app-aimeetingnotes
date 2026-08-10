@@ -65,13 +65,47 @@ class ClickUpClient:
         }
 
         response = self.request_clickup('Get', url, headers)
+        # if response.status_code == 200:
+        #     tasks = response.json().get('tasks', [])
+        #     userID = [task['name'] for task in tasks]
+        #     return userID
+        # else:
+        #     logger.error(f"Failed to retrieve user list. Status code: {response.status_code}")
         if response.status_code == 200:
             tasks = response.json().get('tasks', [])
-            userID = [task['name'] for task in tasks]
-            return userID
-        else:
-            logger.error(f"Failed to retrieve user list. Status code: {response.status_code}")
+            result = []
 
+            for task in tasks:
+                user_name = task.get('name')
+
+                ai_folder_id = None
+                active_value = None
+
+                for field in task.get('custom_fields', []):
+                    if field.get('name') == "AI Meeting Notes Folder ID":
+                        ai_folder_id = field.get('value')
+
+                    elif field.get('name') == "Active":
+                        value = field.get('value')
+                        options = field.get('type_config', {}).get('options', [])
+
+                        # Map index to option name (value = index)
+                        if value is not None and value < len(options):
+                            active_value = options[value].get('name')
+                        else:
+                            active_value = None
+
+                result.append({
+                    "name": user_name,
+                    "ai_meeting_notes_folder_id": ai_folder_id,
+                    "active": active_value
+                })
+
+            return result
+
+        else:
+            logger.error(f"Failed to retrieve tasks. Status code: {response.status_code}")
+            return None
 
     # This function creates a new task in ClickUp with the provided details and returns the task ID
     def create_clickup_task (self, subject, user, is_organizer, is_cancelled, formatted_st, duration_str, categories_str, attendees_str, transcript_found, ai_api_done, summarized_transcript, clickup_api_done):
@@ -306,15 +340,15 @@ class ClickUpClient:
 
 
     # This function creates a new task in the AI Meeting Notes temporary folder with the provided task name and description, assigning it to the appropriate business advisor based on the provided name
-    def add_task_to_temp_list(self, ba_name, task_name, task_description):
+    def add_task_to_temp_list(self, ba_name, task_name, task_description, ba_id=None):
 
-        logger.info(f"Adding AI Meeting Notes task to AI Meeting Notes temporary folder.")
+        logger.info(f"Adding AI Meeting Notes task to AI Meeting Notes temporary folder: {ba_id}")
 
-        ba_id = None
-        for ba in self.BA_LIST:
-            if ba["name"].lower() == ba_name.lower():
-                ba_id = ba["id"]
-                break  
+        # ba_id = None
+        # for ba in self.BA_LIST:
+        #     if ba["name"].lower() == ba_name.lower():
+        #         ba_id = ba["id"]
+        #         break  
         
         if ba_id is None:
             ba_id = self.OTHERS_LIST_ID #Others folder
